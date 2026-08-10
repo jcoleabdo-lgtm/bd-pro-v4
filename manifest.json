@@ -1,0 +1,10 @@
+{
+  "name": "BD Pro Gestion Entreprises",
+  "short_name": "BD Pro",
+  "start_url": "mobile.html",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#0b5cab",
+  "lang": "fr",
+  "icons": []
+}
