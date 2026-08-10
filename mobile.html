@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -711,6 +712,64 @@ tbody tr:hover { background: var(--bg-card) !important; }
     transform: scale(1.1);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
+
+
+/* ===== MOBILE APP SHELL V4.1 ===== */
+.mobile-only-nav{display:none}
+.mobile-backdrop{display:none}
+@media (max-width:768px){
+  :root{--sidebar-width:280px}
+  html,body{width:100%;max-width:100%;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+  body{display:block;background:#0f141b;padding-bottom:72px}
+  .app-layout{display:block;min-height:100dvh;width:100%}
+  .main-content{width:100%;margin-left:0;min-height:100dvh;padding-bottom:12px}
+  .sidebar{width:min(86vw,300px);box-shadow:12px 0 32px rgba(0,0,0,.45);z-index:120}
+  .sidebar-header{padding:20px 18px}
+  .sidebar-nav{padding:12px 10px}
+  .nav-item{min-height:48px;font-size:14px;padding:11px 14px}
+  .nav-section-title{padding:8px 10px}
+  .mobile-toggle{top:12px;left:12px;width:46px;height:46px;border-radius:14px;z-index:250;position:fixed}
+  .header{position:sticky;top:0;z-index:80;padding:12px 14px 12px 68px;min-height:64px;gap:8px;border-bottom:1px solid var(--border);background:rgba(36,40,48,.96);backdrop-filter:blur(10px)}
+  .header-title h1{font-size:17px;line-height:1.2}
+  .header-title .subtitle{font-size:11px;margin-top:2px}
+  .header-actions{width:auto;gap:6px;max-width:55%;justify-content:flex-end}
+  .header-actions .btn{padding:8px 9px;font-size:11px;border-radius:10px}
+  .header-actions .btn span{display:none}
+  .form-section,.search-panel,.stats,.alerts-container{padding:12px 12px}
+  .form-section{border-bottom:0}
+  .form-title{font-size:15px;margin-bottom:12px}
+  .form-grid{grid-template-columns:1fr!important;gap:10px!important}
+  .form-group label{font-size:11px}
+  .form-group input,.form-group select,.form-group textarea{font-size:14px;min-height:44px;border-radius:10px}
+  .btn{min-height:42px;padding:9px 13px;border-radius:11px;font-size:13px}
+  .btn-small{min-height:36px;padding:7px 10px;font-size:12px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .stat-card{padding:13px 12px;border-radius:14px}
+  .stat-card .stat-value{font-size:22px}
+  .stat-card .stat-label{font-size:10px}
+  .search-panel input{min-height:44px;font-size:14px;border-radius:12px}
+  .table-container{margin:0 12px 12px;border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--bg-card)}
+  table{min-width:720px;font-size:11px}
+  th,td{padding:9px 8px;white-space:nowrap}
+  .alerts-container{padding-bottom:80px}
+  .alert-card{padding:14px;border-radius:14px}
+  .modal{padding:10px}
+  .modal-content{max-height:92dvh;padding:18px;border-radius:18px}
+  .detail-row{grid-template-columns:1fr!important;gap:3px;padding:10px 0}
+  .notification{left:12px;right:12px;top:12px;text-align:center;padding:12px 14px;border-radius:12px}
+  .page-content.active{min-height:calc(100dvh - 64px)}
+  .mobile-only-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:0;right:0;bottom:0;height:68px;padding:6px 5px calc(6px + env(safe-area-inset-bottom));background:rgba(26,29,35,.97);border-top:1px solid var(--border);z-index:300;box-shadow:0 -8px 24px rgba(0,0,0,.28);backdrop-filter:blur(14px)}
+  .mobile-only-nav button{border:0;background:transparent;color:var(--text-secondary);font:600 10px/1.1 'IBM Plex Sans',sans-serif;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  .mobile-only-nav button.active{background:rgba(245,158,11,.16);color:var(--accent)}
+  .mobile-only-nav .mi{font-size:20px;line-height:1}
+  .mobile-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:110}
+  .sidebar.open + .mobile-backdrop{display:block}
+  .form-toggle-btn{top:14px;right:12px;width:40px;height:40px}
+}
+@media (display-mode:standalone){
+  body{padding-top:env(safe-area-inset-top)}
+}
+
 </style>
 </head>
 <body>
@@ -3671,5 +3730,27 @@ refreshVeh();
 renderSyncPanel();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(function(){}); }
 </script>
+
+<nav class="mobile-only-nav" id="mobileOnlyNav" aria-label="Navigation mobile">
+  <button data-page="entreprises" onclick="navigateTo('entreprises');setMobileNav('entreprises')"><span class="mi">🏢</span><span>Entreprises</span></button>
+  <button data-page="personnel" onclick="navigateTo('personnel');setMobileNav('personnel')"><span class="mi">👥</span><span>Personnel</span></button>
+  <button data-page="vehicules" onclick="navigateTo('vehicules');setMobileNav('vehicules')"><span class="mi">🚗</span><span>Véhicules</span></button>
+  <button data-page="alerts" onclick="navigateTo('alerts');setMobileNav('alerts')"><span class="mi">🔔</span><span>Alertes</span></button>
+  <button data-page="sync" onclick="navigateTo('sync');setMobileNav('sync')"><span class="mi">🔄</span><span>Sync</span></button>
+</nav>
+<script>
+function setMobileNav(page){
+  document.querySelectorAll('#mobileOnlyNav button').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-page')===page);});
+}
+(function(){
+  var oldNavigate=window.navigateTo;
+  window.navigateTo=function(page){
+    oldNavigate(page);
+    setMobileNav(page);
+  };
+  setTimeout(function(){setMobileNav('entreprises');},0);
+})();
+</script>
+
 </body>
 </html>
