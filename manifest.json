@@ -1,10 +1,13 @@
 {
-  "name": "BD Pro Gestion Entreprises",
-  "short_name": "BD Pro",
-  "start_url": "mobile.html",
+  "name": "BD PRO V4 PRO — Gestion Entreprises",
+  "short_name": "BD PRO V4",
+  "description": "Gestion mobile synchronisée avec Google Sheets",
+  "start_url": "./mobile.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f3f6fa",
-  "theme_color": "#0b5cab",
+  "orientation": "portrait",
+  "background_color": "#0f141b",
+  "theme_color": "#f59e0b",
   "lang": "fr",
   "icons": []
 }
