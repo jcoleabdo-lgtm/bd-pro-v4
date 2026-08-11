@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -3698,18 +3699,200 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { closeModal(); }
 });
 
-// ============ MOBILE V4 PRO SYNC ============
-const SYNC_URL_KEY='bdpro_sync_url', SYNC_DEVICE_KEY='bdpro_sync_device', SYNC_LAST_KEY='bdpro_sync_last';
-function syncDeviceId(){let id=localStorage.getItem(SYNC_DEVICE_KEY);if(!id){id='MOBILE-'+(crypto.randomUUID?crypto.randomUUID():Date.now());localStorage.setItem(SYNC_DEVICE_KEY,id)}return id}
-function getSyncUrl(){return(localStorage.getItem(SYNC_URL_KEY)||'').trim()}
-function saveSyncConfig(){const u=(document.getElementById('syncUrlMobile').value||'').trim();if(!u||!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(u)){showNotification('URL /exec Google Apps Script invalide','error');return}localStorage.setItem(SYNC_URL_KEY,u);showNotification('Configuration de synchronisation enregistrée','success');renderSyncPanel()}
-function syncSetStatus(title,text,type){const b=document.getElementById('syncStatusBox'),t=document.getElementById('syncStatusTitle'),x=document.getElementById('syncStatusText');if(!b||!t||!x)return;t.textContent=title;x.textContent=text;b.style.borderLeftColor=type==='success'?'var(--success)':type==='error'?'var(--danger)':'var(--info)'}
-function localSyncState(){return{version:'BD_PRO_V4',deviceId:syncDeviceId(),clientTs:Date.now(),entreprises:data||[],personnel:personnelData||[],vehicules:vehiculesData||[]}}
-function applyRemoteState(st){if(!st||typeof st!=='object')return false;let p=st.data||st.payload||st.state||st.result||st;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){}}if(!p||typeof p!=='object')return false;const e=p.entreprises||p.ENTREPRISES,pe=p.personnel||p.PERSONNEL,v=p.vehicules||p.VEHICULES;if(!Array.isArray(e)&&!Array.isArray(pe)&&!Array.isArray(v))return false;if(Array.isArray(e)){data=e;localStorage.setItem('entreprisesDB',JSON.stringify(data))}if(Array.isArray(pe)){personnelData=pe;localStorage.setItem('personnelDB',JSON.stringify(personnelData))}if(Array.isArray(v)){vehiculesData=v;localStorage.setItem('vehiculesDB',JSON.stringify(vehiculesData))}refreshEnt();refreshPers();refreshVeh();return true}
-async function syncRequest(url,action,state){const body={action,operation:action,source:'mobile',deviceId:state.deviceId,timestamp:state.clientTs,data:state,payload:state};const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'});const txt=await r.text();let j=null;try{j=txt?JSON.parse(txt):null}catch(e){}if(!r.ok)throw new Error('HTTP '+r.status);return j||{ok:true,raw:txt}}
-async function syncNow(mode='sync'){const url=getSyncUrl();if(!url){navigateTo('sync');showNotification('Configurez d’abord l’URL /exec','error');return}syncSetStatus('Synchronisation…','Connexion au serveur Google Apps Script','info');try{const state=localSyncState();let j=await syncRequest(url,mode,state),applied=false;if(mode!=='push')applied=applyRemoteState(j);if(!applied&&mode==='sync'&&j&&(j.ok===true||j.success===true)){try{const pull=await syncRequest(url,'pull',state);applied=applyRemoteState(pull);j=pull||j}catch(e){}}localStorage.setItem(SYNC_LAST_KEY,new Date().toISOString());localStorage.removeItem('bdpro_sync_dirty');renderSyncPanel();syncSetStatus('Synchronisation réussie',mode==='pull'?'Données chargées depuis Sheets':'PC ↔ Mobile synchronisé','success');showNotification('PC ↔ Mobile synchronisé','success')}catch(e){syncSetStatus('Erreur de synchronisation',e.message||String(e),'error');showNotification('Synchronisation impossible : '+(e.message||String(e)),'error')}}
-function renderSyncPanel(){const u=document.getElementById('syncUrlMobile');if(u)u.value=getSyncUrl();const d=document.getElementById('syncDevice');if(d)d.value=syncDeviceId();const l=document.getElementById('syncLast');if(l)l.value=localStorage.getItem(SYNC_LAST_KEY)?new Date(localStorage.getItem(SYNC_LAST_KEY)).toLocaleString('fr-FR'):'Jamais';const a=document.getElementById('syncEntCount');if(a)a.textContent=(data||[]).length;const b=document.getElementById('syncPersCount');if(b)b.textContent=(personnelData||[]).length;const c=document.getElementById('syncVehCount');if(c)c.textContent=(vehiculesData||[]).length}
-setInterval(function(){if(getSyncUrl()&&document.visibilityState!=='hidden')syncNow('sync')},60000);
+// ============ MOBILE V4 PRO SYNC — GOOGLE SHEETS V4.2 ============
+const SYNC_URL_KEY='bdpro_sync_url';
+const SYNC_DEVICE_KEY='bdpro_sync_device';
+const SYNC_LAST_KEY='bdpro_sync_last';
+const DEFAULT_SYNC_URL='https://script.google.com/macros/s/AKfycbzSeIHMEhAgSXXzzzHdEfAfDcIQU7IHurkU2fiTEsYJr2-KKE2zq7VBAtcF3qwP1Mb48g/exec';
+
+function syncDeviceId(){
+  let id=localStorage.getItem(SYNC_DEVICE_KEY);
+  if(!id){
+    id='MOBILE-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID():Date.now());
+    localStorage.setItem(SYNC_DEVICE_KEY,id);
+  }
+  return id;
+}
+
+function getSyncUrl(){
+  return (localStorage.getItem(SYNC_URL_KEY)||DEFAULT_SYNC_URL).trim();
+}
+
+function isValidSyncUrl(value){
+  try{
+    const u=new URL(String(value||'').trim());
+    return u.protocol==='https:' &&
+           u.hostname==='script.google.com' &&
+           /^\/macros\/s\/[^/]+\/exec\/?$/.test(u.pathname);
+  }catch(e){ return false; }
+}
+
+function saveSyncConfig(){
+  const el=document.getElementById('syncUrlMobile');
+  const u=(el&&el.value?el.value:'').trim();
+  if(!isValidSyncUrl(u)){
+    showNotification('URL /exec Google Apps Script invalide','error');
+    syncSetStatus('URL invalide','Utilisez l’URL complète qui se termine par /exec','error');
+    return false;
+  }
+  localStorage.setItem(SYNC_URL_KEY,u.replace(/\/$/,''));
+  showNotification('Configuration de synchronisation enregistrée','success');
+  renderSyncPanel();
+  syncSetStatus('Connexion configurée','Google Sheets est prêt','success');
+  return true;
+}
+
+function syncSetStatus(title,text,type){
+  const b=document.getElementById('syncStatusBox');
+  const t=document.getElementById('syncStatusTitle');
+  const x=document.getElementById('syncStatusText');
+  if(!b||!t||!x)return;
+  t.textContent=title;
+  x.textContent=text;
+  b.style.borderLeftColor=type==='success'?'var(--success)':type==='error'?'var(--danger)':'var(--info)';
+}
+
+function localSyncState(){
+  return {
+    version:'BD_PRO_V4',
+    deviceId:syncDeviceId(),
+    clientTs:Date.now(),
+    entreprises:Array.isArray(data)?data:[],
+    personnel:Array.isArray(personnelData)?personnelData:[],
+    vehicules:Array.isArray(vehiculesData)?vehiculesData:[]
+  };
+}
+
+function applyRemoteState(st){
+  if(!st||typeof st!=='object')return false;
+  let p=st.data||st.payload||st.state||st.result||st;
+  if(typeof p==='string'){
+    try{p=JSON.parse(p);}catch(e){return false;}
+  }
+  if(!p||typeof p!=='object')return false;
+  const e=p.entreprises||p.ENTREPRISES;
+  const pe=p.personnel||p.PERSONNEL;
+  const v=p.vehicules||p.VEHICULES;
+  let applied=false;
+  if(Array.isArray(e)){data=e;saveData();applied=true;}
+  if(Array.isArray(pe)){personnelData=pe;savePersonnel();applied=true;}
+  if(Array.isArray(v)){vehiculesData=v;saveVehicules();applied=true;}
+  if(applied){
+    refreshEnt();
+    refreshPers();
+    refreshVeh();
+  }
+  return applied;
+}
+
+async function postToSheets(payload){
+  const url=getSyncUrl();
+  if(!isValidSyncUrl(url))throw new Error('URL /exec invalide');
+  const response=await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload),
+    cache:'no-store',
+    redirect:'follow'
+  });
+  const text=await response.text();
+  let result=null;
+  try{result=text?JSON.parse(text):{};}catch(e){
+    throw new Error('Réponse Apps Script invalide');
+  }
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  if(result.error)throw new Error(result.error);
+  return result;
+}
+
+async function getFromSheets(){
+  const url=getSyncUrl();
+  if(!isValidSyncUrl(url))throw new Error('URL /exec invalide');
+  const response=await fetch(url+'?action=getAll&_='+Date.now(),{
+    method:'GET',
+    cache:'no-store',
+    redirect:'follow'
+  });
+  const text=await response.text();
+  let result=null;
+  try{result=text?JSON.parse(text):{};}catch(e){
+    throw new Error('Réponse Apps Script invalide');
+  }
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  if(result.error)throw new Error(result.error);
+  return result;
+}
+
+async function syncNow(mode='sync'){
+  const url=getSyncUrl();
+  if(!isValidSyncUrl(url)){
+    navigateTo('sync');
+    showNotification('Configurez l’URL /exec','error');
+    syncSetStatus('URL invalide','L’adresse doit être une URL Google Apps Script /exec','error');
+    return false;
+  }
+
+  syncSetStatus('Synchronisation…','Connexion à Google Sheets','info');
+
+  try{
+    let result;
+
+    // PC/Mobile → Google Sheets
+    if(mode==='push'||mode==='sync'){
+      const state=localSyncState();
+      result=await postToSheets({
+        action:'saveAll',
+        entreprises:state.entreprises,
+        personnel:state.personnel,
+        vehicules:state.vehicules
+      });
+      if(result && result.success===false)throw new Error(result.error||'Sauvegarde refusée');
+    }
+
+    // Google Sheets → Mobile
+    if(mode==='pull'||mode==='sync'){
+      result=await getFromSheets();
+      if(!applyRemoteState(result))throw new Error('Aucune donnée exploitable reçue de Google Sheets');
+    }
+
+    localStorage.setItem(SYNC_LAST_KEY,new Date().toISOString());
+    renderSyncPanel();
+
+    const msg=mode==='push'?'Données envoyées vers Google Sheets':
+              mode==='pull'?'Données chargées depuis Google Sheets':
+              'PC ↔ Mobile synchronisé';
+    syncSetStatus('Synchronisation réussie',msg,'success');
+    showNotification('✅ '+msg,'success');
+    return true;
+
+  }catch(e){
+    console.error('SYNC ERROR',e);
+    syncSetStatus('Erreur de synchronisation',e.message||String(e),'error');
+    showNotification('❌ Synchronisation impossible : '+(e.message||String(e)),'error');
+    return false;
+  }
+}
+
+function renderSyncPanel(){
+  const u=document.getElementById('syncUrlMobile');
+  if(u)u.value=getSyncUrl();
+  const d=document.getElementById('syncDevice');
+  if(d)d.value=syncDeviceId();
+  const l=document.getElementById('syncLast');
+  if(l){
+    const v=localStorage.getItem(SYNC_LAST_KEY);
+    l.value=v?new Date(v).toLocaleString('fr-FR'):'Jamais';
+  }
+  const a=document.getElementById('syncEntCount');
+  if(a)a.textContent=(data||[]).length;
+  const b=document.getElementById('syncPersCount');
+  if(b)b.textContent=(personnelData||[]).length;
+  const c=document.getElementById('syncVehCount');
+  if(c)c.textContent=(vehiculesData||[]).length;
+}
+
+// Pas de synchronisation automatique destructive.
+// L'utilisateur garde le contrôle avec le bouton Synchroniser.
 
 // ============ INIT ============
 // Force reload defaults if count changed (added new records to defaultData)
