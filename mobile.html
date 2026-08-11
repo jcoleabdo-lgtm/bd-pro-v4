@@ -3895,15 +3895,23 @@ function renderSyncPanel(){
 // L'utilisateur garde le contrôle avec le bouton Synchroniser.
 
 // ============ INIT ============
-// Force reload defaults if count changed (added new records to defaultData)
+// IMPORTANT : ne jamais recharger les données par défaut simplement parce que
+// le nombre d'enregistrements a changé. Cela détruisait les nouveaux véhicules
+// ajoutés par l'utilisateur après une synchronisation/recharge.
 var storedEnt = localStorage.getItem('entreprisesDB');
-if (!storedEnt || JSON.parse(storedEnt).length !== defaultData.length) {
+if (!storedEnt) {
     data = [].concat(defaultData);
     saveData();
 }
-if (personnelData.length === 0 || !personnelData[0].cin) { personnelData = [].concat(defaultPersonnel); savePersonnel(); }
+
+var storedPers = localStorage.getItem('personnelDB');
+if (!storedPers) {
+    personnelData = [].concat(defaultPersonnel);
+    savePersonnel();
+}
+
 var storedVeh = localStorage.getItem('vehiculesDB');
-if (!storedVeh || JSON.parse(storedVeh).length !== defaultVehicules.length) {
+if (!storedVeh) {
     vehiculesData = [].concat(defaultVehicules);
     saveVehicules();
 }
